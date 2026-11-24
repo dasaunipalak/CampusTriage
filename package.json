@@ -1,0 +1,20 @@
+{
+  "name": "campustriage",
+  "private": true,
+  "version": "1.0.0",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "dev": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test",
+    "demo": "node server/scripts/demo.js",
+    "simulate": "node server/scripts/simulate.js",
+    "slides": "node scripts/build-presentation.cjs",
+    "pptx": "node scripts/export-pptx.cjs",
+    "verify:pptx": "node scripts/verify-pptx.cjs",
+    "verify:ui": "node scripts/verify-ui.cjs",
+    "verify:live": "node --env-file-if-exists=server/.env server/scripts/verify-live.js"
+  },
+  "devDependencies": { "playwright": "^1.58.0" }
+}

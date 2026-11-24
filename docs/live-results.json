@@ -1,0 +1,21 @@
+{
+  "command": "npm run verify:live",
+  "exitCode": 1,
+  "configurationFile": "server/.env",
+  "configurationFilePresent": false,
+  "diagnostics": [
+    "server/.env not found. Continuing without it.",
+    "Live AI UNVERIFIED. Add OPENAI_API_KEY and OPENAI_MODEL to server/.env."
+  ],
+  "liveAI": "unverified",
+  "liveChecksPassed": [],
+  "blockedChecks": [
+    "Real provider request",
+    "Student form submission using real AI",
+    "Live summary, quoted evidence and rank-reason dashboard verification"
+  ],
+  "reason": "Neither OPENAI_API_KEY nor OPENAI_MODEL is configured; no real provider request was made.",
+  "demoMode": "mock",
+  "mockBrowserChecksPassed": 12,
+  "note": "Mock/stubbed browser checks are independent simulation evidence, not live AI verification."
+}

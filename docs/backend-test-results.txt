@@ -1,0 +1,40 @@
+
+> campustriage@1.0.0 test
+> npm --prefix server test
+
+
+> campus-triage-server@1.0.0 test
+> node --test
+
+✔ real adapter requests strict structured output and verifies only after valid success (2.145667ms)
+✔ missing key/model never invokes provider or silently uses mock (0.384ms)
+✔ mock mode is explicit and does not claim live verification (0.28ms)
+✔ evidence must be an exact contiguous quote even without a safety flag (0.090541ms)
+✔ adapter rejects HTTP errors, malformed JSON, refusals, incomplete and ungrounded results (0.533417ms)
+✔ deadline aborts stalled fetch and stalled body reading (22.710167ms)
+✔ HTTP API saves original complaint on real-adapter timeout and exposes mode safely (66.738875ms)
+✔ POST preserves originals, persists UTC time, pending status, successful safe analysis and defaults (64.153875ms)
+✔ POST validates both fields and never invokes analyzer for invalid input (15.733625ms)
+✔ thrown analysis saves original complaint with unknown risk and manual review (3.484375ms)
+✔ invalid analyzer output is distinguishable from successful no-risk analysis (7.9085ms)
+✔ hazard requires admin review even if analyzer needsReview is false (3.099666ms)
+✔ demo fixture ranks hazard, overdue and routine; seed refuses existing data (4.312ms)
+✔ resolve persists status, removes complaint from pending queue and is idempotent (6.449625ms)
+✔ SQLite persists original and analysis across database reopen (3.289708ms)
+✔ invalid JSON and oversized bodies return JSON errors without saving (4.098458ms)
+✔ ungrounded evidence triggers manual review even for injected analyzers (3.577875ms)
+✔ migration preserves old database records and labels historical analysis as legacy mock (3.289042ms)
+✔ safety hazards precede overdue and high-scoring routine complaints (2.573833ms)
+✔ 48-hour threshold is inclusive; overdue uses oldest first regardless of score (0.175916ms)
+✔ exact weighted formula and descending score order (0.169792ms)
+✔ equal scores use oldest first, then ID for identical timestamps (0.12775ms)
+✔ waiting clamps to 0–10; ranking is pure and validates explicit factor inputs (0.438041ms)
+✔ fictional FIFO comparison and exact 48-hour promotion are reproducible (2.572167ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 318.65975

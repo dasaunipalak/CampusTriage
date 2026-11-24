@@ -5,13 +5,14 @@ const { mkdtempSync, rmSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const path = require('node:path');
 const { createApp } = require('../src/app');
-const { openDatabase } = require('../src/database');
+const { openDatabase, insertComplaint, toComplaint } = require('../src/database');
 const { seed } = require('../scripts/seed');
+const { mockAnalyzeComplaint } = require('../src/analyzer');
 
 const NOW = '2026-11-23T12:00:00.000Z';
 async function setup(t, options = {}) {
   const db = openDatabase(':memory:');
-  const server = createApp({ db, now: () => new Date(NOW), ...options }).listen(0, '127.0.0.1');
+  const server = createApp({ db, analyzer: mockAnalyzeComplaint, now: () => new Date(NOW), ...options }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(async () => {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
@@ -24,7 +25,7 @@ async function setup(t, options = {}) {
     });
     return { status: response.status, body: await response.json() };
   }
-  return { db, request };
+  return { db, request, baseUrl: `http://127.0.0.1:${server.address().port}` };
 }
 
 test('POST preserves originals, persists UTC time, pending status, successful safe analysis and defaults', async t => {
@@ -144,5 +145,43 @@ test('SQLite persists original and analysis across database reopen', async t => 
     assert.equal(row.description, 'socket mein paani ja raha hai');
     assert.equal(JSON.parse(row.analysis).possibleSafetyRisk, true);
     assert.equal(row.analysis_status, 'succeeded');
+  } finally { second.close(); }
+});
+
+test('invalid JSON and oversized bodies return JSON errors without saving', async t => {
+  const { db, baseUrl } = await setup(t);
+  for (const [body, status] of [['{', 400], [JSON.stringify({ description: 'x'.repeat(40000), location: 'Hall' }), 413]]) {
+    const response = await fetch(`${baseUrl}/complaints`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    assert.equal(response.status, status);
+    assert.equal(typeof (await response.json()).error, 'string');
+  }
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM complaints').get().n, 0);
+});
+
+test('ungrounded evidence triggers manual review even for injected analyzers', async t => {
+  const { request } = await setup(t, { analyzer: async () => ({ category: 'electrical', summary: 'Water in socket',
+    possibleSafetyRisk: true, riskEvidence: 'invented phrase', needsReview: true }) });
+  const response = await request('/complaints', 'POST', { description: 'water in socket', location: 'Hall' });
+  assert.equal(response.status, 201);
+  assert.equal(response.body.analysisStatus, 'failed');
+  assert.equal(response.body.analysis, null);
+  assert.equal(response.body.reviewStatus, 'required');
+});
+
+test('migration preserves old database records and labels historical analysis as legacy mock', async t => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'campustriage-migration-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const filename = path.join(directory, 'legacy.sqlite');
+  const first = openDatabase(filename);
+  insertComplaint(first, { description: 'Broken chair', location: 'Hall', analysis: await mockAnalyzeComplaint('Broken chair'),
+    analysisStatus: 'succeeded', createdAt: NOW, severity: 5, urgency: 5, impact: 5, scoringSource: 'provisional-defaults' });
+  first.exec('ALTER TABLE complaints DROP COLUMN analysis_mode');
+  first.close();
+  const second = openDatabase(filename);
+  try {
+    const complaint = toComplaint(second.prepare('SELECT * FROM complaints').get());
+    assert.equal(complaint.description, 'Broken chair');
+    assert.equal(complaint.analysisMode, 'legacy-mock');
+    assert.equal(complaint.analysisStatus, 'succeeded');
   } finally { second.close(); }
 });

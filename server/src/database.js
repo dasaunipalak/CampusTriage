@@ -24,6 +24,10 @@ function openDatabase(filename = DEFAULT_DB_PATH) {
       scoring_source TEXT NOT NULL
     );
   `);
+  // Existing milestone databases contain mock analysis. Preserve it and its provenance.
+  if (!db.prepare('PRAGMA table_info(complaints)').all().some(column => column.name === 'analysis_mode')) {
+    db.exec("ALTER TABLE complaints ADD COLUMN analysis_mode TEXT NOT NULL DEFAULT 'legacy-mock'");
+  }
   return db;
 }
 
@@ -34,7 +38,7 @@ function toComplaint(row) {
     || analysis?.needsReview === true || analysis?.possibleSafetyRisk === true;
   return {
     id: row.id, description: row.description, location: row.location,
-    analysis, analysisStatus: row.analysis_status,
+    analysis, analysisStatus: row.analysis_status, analysisMode: row.analysis_mode,
     analysisError: row.analysis_status === 'failed'
       ? 'Analysis unavailable or invalid; manual review required.' : null,
     needsReview, reviewStatus: needsReview ? 'required' : 'not_required',
@@ -46,12 +50,12 @@ function toComplaint(row) {
 
 function insertComplaint(db, complaint) {
   const result = db.prepare(`INSERT INTO complaints
-    (description, location, analysis, analysis_status, created_at, severity, urgency, impact, scoring_source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    (description, location, analysis, analysis_status, created_at, severity, urgency, impact, scoring_source, analysis_mode)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     complaint.description, complaint.location,
     complaint.analysis === null ? null : JSON.stringify(complaint.analysis),
     complaint.analysisStatus, complaint.createdAt,
-    complaint.severity, complaint.urgency, complaint.impact, complaint.scoringSource,
+    complaint.severity, complaint.urgency, complaint.impact, complaint.scoringSource, complaint.analysisMode ?? 'mock',
   );
   return toComplaint(db.prepare('SELECT * FROM complaints WHERE id = ?').get(result.lastInsertRowid));
 }

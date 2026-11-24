@@ -16,3 +16,7 @@ server/data/
 credentials.json
 secrets.*
 .DS_Store
+client/dist/
+test-results/
+playwright-report/
+.submission-build/

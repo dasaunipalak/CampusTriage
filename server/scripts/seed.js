@@ -1,5 +1,5 @@
 const { openDatabase, insertComplaint } = require('../src/database');
-const { analyzeComplaint } = require('../src/analyzer');
+const { mockAnalyzeComplaint } = require('../src/analyzer');
 
 async function seed(db, referenceTime) {
   if (!Number.isFinite(new Date(referenceTime).getTime())) throw new Error('Invalid seed reference time');
@@ -16,7 +16,7 @@ async function seed(db, referenceTime) {
     throw new Error('Demo seeding requires an empty database; use a fresh DB_PATH.');
   }
   const prepared = await Promise.all(fixtures.map(async fixture => ({
-    ...fixture, analysis: await analyzeComplaint(fixture.description), analysisStatus: 'succeeded',
+    ...fixture, analysis: await mockAnalyzeComplaint(fixture.description), analysisStatus: 'succeeded', analysisMode: 'mock',
     createdAt: new Date(new Date(referenceTime).getTime() - fixture.hoursAgo * 3_600_000).toISOString(),
     scoringSource: 'demo-fixture',
   })));

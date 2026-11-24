@@ -5,8 +5,8 @@
   "description": "CampusTriage complaint persistence, analysis boundary and ranking",
   "engines": { "node": ">=22.13.0" },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch src/index.js",
     "test": "node --test",
     "seed": "node scripts/seed.js"
   },

@@ -1,0 +1,15 @@
+{
+  "file": "docs/CampusTriage.pptx",
+  "sha256": "fc47da211208751210b009d63078e3b0396bedb35d1dbe0dfccea71da59b7887",
+  "slideCount": 5,
+  "nativeComparisonTable": true,
+  "simulationValuesVerified": true,
+  "backendResultsPreserved": true,
+  "uiScreenshotEmbedded": true,
+  "editableTextBoxes": 66,
+  "openedAndRenderedIn": "Keynote 13.1",
+  "nativeSlideRenders": 5,
+  "renderDirectory": ".submission-build/pptx/rendered",
+  "microsoftPowerPointApplicationTested": false,
+  "note": "The actual PPTX was reopened and rendered in Keynote. Visual inspection is recorded separately in docs/VERIFICATION.md."
+}

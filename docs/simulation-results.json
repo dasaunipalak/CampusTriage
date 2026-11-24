@@ -1,0 +1,58 @@
+{
+  "label": "SIMULATION: fictional tickets, mock analysis, synthetic factors",
+  "beforeTime": "2026-11-24T11:59:59.999Z",
+  "afterTime": "2026-11-24T12:00:00.000Z",
+  "fifo": [
+    1,
+    2,
+    3
+  ],
+  "rankedBefore": [
+    3,
+    2,
+    1
+  ],
+  "rankedAt48Hours": [
+    3,
+    1,
+    2
+  ],
+  "positions": [
+    {
+      "id": 1,
+      "description": "Reading room fan is not working.",
+      "fifoPosition": 1,
+      "rankedBeforePosition": 3,
+      "rankedAt48HoursPosition": 2,
+      "severity": 2,
+      "urgency": 2,
+      "impact": 4,
+      "scoreAt48Hours": 3,
+      "evidence": null
+    },
+    {
+      "id": 2,
+      "description": "Classroom projector is not working.",
+      "fifoPosition": 2,
+      "rankedBeforePosition": 2,
+      "rankedAt48HoursPosition": 3,
+      "severity": 9,
+      "urgency": 9,
+      "impact": 9,
+      "scoreAt48Hours": 8.2,
+      "evidence": null
+    },
+    {
+      "id": 3,
+      "description": "washroom ke socket mein paani ja raha hai",
+      "fifoPosition": 3,
+      "rankedBeforePosition": 1,
+      "rankedAt48HoursPosition": 1,
+      "severity": 5,
+      "urgency": 5,
+      "impact": 5,
+      "scoreAt48Hours": 4.516666666666667,
+      "evidence": "washroom ke socket mein paani ja raha hai"
+    }
+  ]
+}

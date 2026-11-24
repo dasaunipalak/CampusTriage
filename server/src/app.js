@@ -1,12 +1,19 @@
 const express = require('express');
-const { analyzeComplaint, isValidAnalysis } = require('./analyzer');
+const { createAnalyzer, isValidAnalysis } = require('./analyzer');
+const path = require('node:path');
 const { insertComplaint, toComplaint } = require('./database');
 const { rankComplaints, PROVISIONAL_DEFAULTS } = require('./ranking');
 
-function createApp({ db, analyzer = analyzeComplaint, now = () => new Date() }) {
+function createApp({ db, analyzer = createAnalyzer(), now = () => new Date(), demo = false,
+  frontendDir = path.join(__dirname, '../../client/dist') }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
+
+  app.get('/api/status', (req, res) => {
+    res.json({ analysis: analyzer.getStatus?.() ?? { mode: analyzer.mode ?? 'injected', ready: true,
+      liveVerified: false, missingSettings: [] }, simulation: demo, referenceTime: now().toISOString() });
+  });
 
   app.post('/complaints', async (req, res) => {
     const { description, location } = req.body ?? {};
@@ -14,11 +21,12 @@ function createApp({ db, analyzer = analyzeComplaint, now = () => new Date() }) 
       || typeof location !== 'string' || !location.trim() || location.length > 200) {
       return res.status(400).json({ error: 'description (1–5000 characters) and location (1–200 characters) must be non-empty strings.' });
     }
+    const referenceTime = now().toISOString();
     let analysis = null;
     let analysisStatus = 'failed';
     try {
       const result = await analyzer(description);
-      if (isValidAnalysis(result)) {
+      if (isValidAnalysis(result, description)) {
         // Snapshot only the agreed contract fields before persistence.
         analysis = { category: result.category, summary: result.summary,
           possibleSafetyRisk: result.possibleSafetyRisk,
@@ -28,9 +36,9 @@ function createApp({ db, analyzer = analyzeComplaint, now = () => new Date() }) 
     } catch {
       // Preserve the complaint even when the external analyzer fails.
     }
-    const referenceTime = now().toISOString();
     const complaint = insertComplaint(db, { description, location, analysis, analysisStatus,
-      createdAt: referenceTime, ...PROVISIONAL_DEFAULTS, scoringSource: 'provisional-defaults' });
+      analysisMode: analyzer.mode ?? 'injected', createdAt: referenceTime,
+      ...PROVISIONAL_DEFAULTS, scoringSource: 'provisional-defaults' });
     res.status(201).json(rankComplaints([complaint], referenceTime)[0]);
   });
 
@@ -53,6 +61,7 @@ function createApp({ db, analyzer = analyzeComplaint, now = () => new Date() }) 
     res.json(rankComplaints([toComplaint(db.prepare('SELECT * FROM complaints WHERE id = ?').get(id))], now())[0]);
   });
 
+  app.use(express.static(frontendDir));
   app.use((req, res) => res.status(404).json({ error: 'Route not found.' }));
   app.use((error, req, res, next) => {
     if (error.type === 'entity.parse.failed') return res.status(400).json({ error: 'Invalid JSON body.' });

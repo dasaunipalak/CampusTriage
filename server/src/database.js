@@ -28,6 +28,27 @@ function openDatabase(filename = DEFAULT_DB_PATH) {
   if (!db.prepare('PRAGMA table_info(complaints)').all().some(column => column.name === 'analysis_mode')) {
     db.exec("ALTER TABLE complaints ADD COLUMN analysis_mode TEXT NOT NULL DEFAULT 'legacy-mock'");
   }
+  if (!db.prepare('PRAGMA table_info(complaints)').all().some(column => column.name === 'student_id')) {
+    db.exec('ALTER TABLE complaints ADD COLUMN student_id INTEGER REFERENCES students(id)');
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS students (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      consumed INTEGER NOT NULL DEFAULT 0 CHECK (consumed IN (0, 1)),
+      created_at TEXT NOT NULL,
+      last_sent_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS otp_codes_email_created ON otp_codes(email, created_at);
+  `);
   return db;
 }
 
@@ -50,12 +71,12 @@ function toComplaint(row) {
 
 function insertComplaint(db, complaint) {
   const result = db.prepare(`INSERT INTO complaints
-    (description, location, analysis, analysis_status, created_at, severity, urgency, impact, scoring_source, analysis_mode)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    (description, location, analysis, analysis_status, created_at, severity, urgency, impact, scoring_source, analysis_mode, student_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     complaint.description, complaint.location,
     complaint.analysis === null ? null : JSON.stringify(complaint.analysis),
     complaint.analysisStatus, complaint.createdAt,
-    complaint.severity, complaint.urgency, complaint.impact, complaint.scoringSource, complaint.analysisMode ?? 'mock',
+    complaint.severity, complaint.urgency, complaint.impact, complaint.scoringSource, complaint.analysisMode ?? 'mock', complaint.studentId ?? null,
   );
   return toComplaint(db.prepare('SELECT * FROM complaints WHERE id = ?').get(result.lastInsertRowid));
 }

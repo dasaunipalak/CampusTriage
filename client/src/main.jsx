@@ -6,7 +6,7 @@ async function api(url, options = {}) {
   const response = await fetch(url, { ...options, signal: AbortSignal.timeout(70000),
     headers: { 'Content-Type': 'application/json', ...options.headers } });
   const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'The request could not be completed.');
+  if (!response.ok) { const error = new Error(body.error || 'The request could not be completed.'); error.status = response.status; throw error; }
   return body;
 }
 const modeName = mode => ({ openai: 'OpenAI', mock: 'Mock demo', 'legacy-mock': 'Legacy mock',
@@ -17,11 +17,21 @@ function App() {
   const [screen, setScreen] = useState(location.hash === '#admin' ? 'admin' : 'student');
   const [status, setStatus] = useState(null);
   const [statusError, setStatusError] = useState('');
+  const [student, setStudent] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const loadStatus = useCallback(async () => {
     try { setStatus(await api('/api/status')); setStatusError(''); }
     catch { setStatusError('Cannot reach the backend. Check that the server is running.'); }
   }, []);
   useEffect(() => { loadStatus(); }, [loadStatus]);
+  useEffect(() => {
+    if (screen !== 'student') { setAuthChecked(true); return; }
+    let active = true;
+    api('/api/auth/student/me').then(result => { if (active) setStudent(result.student); })
+      .catch(() => { if (active) setStudent(null); })
+      .finally(() => { if (active) setAuthChecked(true); });
+    return () => { active = false; };
+  }, [screen]);
   useEffect(() => {
     const onHash = () => setScreen(location.hash === '#admin' ? 'admin' : 'student');
     window.addEventListener('hashchange', onHash);
@@ -32,7 +42,7 @@ function App() {
     <header className="topbar">
       <a href="#student" className="brand" aria-label="CampusTriage home"><span className="brand-mark">ct</span><span>Campus<span className="brand-light">Triage</span><small>CAMPUS MAINTENANCE</small></span></a>
       <nav aria-label="Main navigation"><a href="#student" aria-current={screen === 'student' ? 'page' : undefined}>Student report</a><a href="#admin" aria-current={screen === 'admin' ? 'page' : undefined}>Admin queue</a></nav>
-      <span className="prototype">SE PROJECT / PROTOTYPE</span>
+      {screen === 'student' && student ? <div className="student-session"><span>Signed in as <strong>{student.email}</strong></span><button className="secondary" onClick={async () => { await api('/api/auth/student/logout', { method: 'POST' }); setStudent(null); }}>Logout</button></div> : <span className="prototype">SE PROJECT / PROTOTYPE</span>}
     </header>
     <div className={`modebar ${analysis?.mode === 'openai' && analysis.ready ? 'live' : ''}`} role="status">
       {statusError || (!analysis ? 'Checking analysis configuration…' : <>
@@ -44,12 +54,36 @@ function App() {
         {status.simulation && <span>Simulation clock: {status.referenceTime}</span>}
       </>)}
     </div>
-    <main>{screen === 'student' ? <Student onSubmitted={loadStatus}/> : <Admin onRefresh={loadStatus}/>}</main>
+    <main>{screen === 'student' ? !authChecked ? <p className="state" role="status">Checking your student session…</p> : student ? <Student onSubmitted={loadStatus} onUnauthorized={() => setStudent(null)} /> : <StudentLogin onLogin={setStudent}/> : <Admin onRefresh={loadStatus}/>}</main>
     <footer><span>CampusTriage / Software Engineering submission</span><span>Human review remains part of every safety decision.</span></footer>
   </>;
 }
 
-function Student({ onSubmitted }) {
+function StudentLogin({ onLogin }) {
+  const [email, setEmail] = useState(''); const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false); const [cooldown, setCooldown] = useState(0);
+  const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  useEffect(() => { if (!cooldown) return; const timer = setTimeout(() => setCooldown(value => Math.max(0, value - 1)), 1000); return () => clearTimeout(timer); }, [cooldown]);
+  async function requestCode(event) {
+    event.preventDefault(); setBusy(true); setError('');
+    try { await api('/api/auth/student/request-otp', { method: 'POST', body: JSON.stringify({ email }) }); setSent(true); setCooldown(60); setCode(''); }
+    catch (e) { setError(e.message); const wait = e.message.match(/wait (\d+) seconds/); if (wait) setCooldown(Number(wait[1])); }
+    finally { setBusy(false); }
+  }
+  async function verify(event) {
+    event.preventDefault(); setBusy(true); setError('');
+    try { onLogin((await api('/api/auth/student/verify-otp', { method: 'POST', body: JSON.stringify({ email, code }) })).student); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  return <div className="student-layout"><section className="intro"><p className="eyebrow">A CAMPUS THAT LISTENS</p><h1>Small report.<br/>Better campus.</h1><p className="lead">Sign in with your IIITL college email to report a maintenance issue.</p><div className="process"><span>01 <b>Verify your college email</b></span><span>02 <b>Describe the issue</b></span><span>03 <b>The campus team reviews it</b></span></div><aside className="note"><strong>Your email stays private.</strong><p>It is used for sign-in and is not included with your report.</p></aside></section>
+    <section className="form-card" aria-labelledby="login-title"><span className="small-tag">STUDENT DESK</span><h2 id="login-title">Student sign in</h2><p>We’ll send a one-time code to your college email.</p>{error && <p className="error" role="alert">{error}</p>}
+      <form onSubmit={requestCode}><label htmlFor="student-email">College email</label><input id="student-email" type="email" required value={email} disabled={busy || sent} onChange={e => setEmail(e.target.value)} placeholder="name@iiitl.ac.in"/><button className="primary submit" disabled={busy || cooldown > 0}>{busy ? 'Sending code…' : cooldown ? `Resend in ${cooldown}s` : sent ? 'Resend code' : 'Send code'}</button></form>
+      {sent && <form onSubmit={verify}><label htmlFor="otp-code">One-time code</label><input id="otp-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} disabled={busy} onChange={e => setCode(e.target.value)}/><button className="primary submit" disabled={busy || code.length !== 6}>{busy ? 'Verifying…' : 'Verify'}</button></form>}
+    </section></div>;
+}
+
+function Student({ onSubmitted, onUnauthorized }) {
   const [description, setDescription] = useState('');
   const [locationValue, setLocationValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -60,7 +94,7 @@ function Student({ onSubmitted }) {
     try {
       const result = await api('/complaints', { method: 'POST', body: JSON.stringify({ description, location: locationValue }) });
       setSaved(result); setDescription(''); setLocationValue(''); onSubmitted();
-    } catch (error) { setError(error.name === 'TimeoutError' ? 'The request timed out. Check the admin queue before retrying.' : error.message); }
+    } catch (error) { if (error.status === 401) { onUnauthorized(); return; } setError(error.name === 'TimeoutError' ? 'The request timed out. Check the admin queue before retrying.' : error.message); }
     finally { setBusy(false); }
   }
   return <div className="student-layout">

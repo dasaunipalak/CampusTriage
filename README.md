@@ -57,6 +57,12 @@ The adapter calls the [OpenAI Responses API](https://developers.openai.com/api/r
 
 ## Development and verification
 
+### Student sign-in and email setup
+
+Student complaint submission requires an OTP login using an `@iiitl.ac.in` address. Copy `server/.env.example` to `server/.env` if you have not already done so. Development and tests default to the **console sender**: request a code in the browser, then read the six-digit code in the server terminal (`[student OTP] address: 123456`). It never sends real email. Tests inject their own in-memory sender.
+
+The sender can use SMTP only when explicitly enabled with `OTP_EMAIL_SENDER=smtp`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` in the private `server/.env`; never put these in the frontend. `SESSION_SECRET` should be a long random value for a persistent deployment. The example SMTP values are placeholders and are not usable credentials. SMTP delivery to an IIITL inbox has not been tested. Do not switch development or test runs to SMTP.
+
 Backend terminal:
 
 ```sh
@@ -107,10 +113,19 @@ FIFO ignores possible safety concern. Our ranking moves #3 to position 1 and pro
 
 ## API contract
 
+Student auth endpoints are under `/api/auth/student`: `POST /request-otp` accepts `{ "email": "name@iiitl.ac.in" }`, `POST /verify-otp` accepts `{ "email": "...", "code": "123456" }`, `GET /me` returns the current session or **401**, and `POST /logout` clears the session cookie. The signed session cookie is `HttpOnly` and `SameSite=Lax`. `POST /complaints` also requires that student session; queue reads retain the existing response shape.
+
 `POST /complaints` accepts JSON `{ "description": "...", "location": "..." }`. Both must be nonblank strings; maximum lengths are 5000 and 200. Original text is preserved. The API ignores supplied status, timestamps, AI fields and factor values. A saved complaint returns **201**, including failed analysis. Validation errors return **400**, oversized bodies **413**.
 
 ```sh
-curl -i -X POST http://localhost:3001/complaints \
+curl -i -X POST http://localhost:3001/api/auth/student/request-otp \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"student@iiitl.ac.in"}'
+# Read the code from the server terminal, then:
+curl -i -c cookies.txt -X POST http://localhost:3001/api/auth/student/verify-otp \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"student@iiitl.ac.in","code":"123456"}'
+curl -i -b cookies.txt -X POST http://localhost:3001/complaints \
   -H 'Content-Type: application/json' \
   -d '{"description":"socket mein paani ja raha hai","location":"Fictional hostel"}'
 curl http://localhost:3001/complaints
@@ -208,4 +223,4 @@ New submissions use **provisional severity=5, urgency=5, impact=5**, since the a
 - `docs/VERIFICATION.md`: actual results and remaining limits.
 - `docs/screenshots/`, `docs/browser-results.json`, `docs/simulation-results.json`: recorded fictional demo evidence.
 
-This local prototype has no authentication, admin authorization, rate limiting, notifications, model accuracy study, deployment, backup workflow, multi-campus isolation or review-completion workflow. The server binds to loopback for the classroom demo. It is not ready for public use. The deadline applies to AI fetching and response parsing; database/filesystem failures still return an error and cannot promise persistence. Live OpenAI verification is the remaining external configuration task.
+This local prototype has student OTP authentication and request limits, but no admin authorization, notifications, model accuracy study, deployment, backup workflow, multi-campus isolation or review-completion workflow. The server binds to loopback for the classroom demo. It is not ready for public use. The deadline applies to AI fetching and response parsing; database/filesystem failures still return an error and cannot promise persistence. Live OpenAI verification and real SMTP inbox delivery remain unverified external configuration tasks.

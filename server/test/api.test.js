@@ -12,15 +12,24 @@ const { mockAnalyzeComplaint } = require('../src/analyzer');
 const NOW = '2026-11-23T12:00:00.000Z';
 async function setup(t, options = {}) {
   const db = openDatabase(':memory:');
-  const server = createApp({ db, analyzer: mockAnalyzeComplaint, now: () => new Date(NOW), ...options }).listen(0, '127.0.0.1');
+  let sentCode = null;
+  const emailSender = options.emailSender || { async sendOtp(email, code) { sentCode = code; } };
+  const server = createApp({ db, analyzer: mockAnalyzeComplaint, emailSender, sessionSecret: 'test-session-secret', now: () => new Date(NOW), ...options }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(async () => {
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     db.close();
   });
+  let cookie = '';
+  if (!options.unauthenticated) {
+    const url = `http://127.0.0.1:${server.address().port}`;
+    await fetch(`${url}/api/auth/student/request-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'test@iiitl.ac.in' }) });
+    const response = await fetch(`${url}/api/auth/student/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'test@iiitl.ac.in', code: sentCode }) });
+    cookie = response.headers.get('set-cookie').split(';')[0];
+  }
   async function request(route = '/complaints', method = 'GET', body) {
     const response = await fetch(`http://127.0.0.1:${server.address().port}${route}`, {
-      method, headers: { 'Content-Type': 'application/json' },
+      method, headers: { 'Content-Type': 'application/json', ...(cookie ? { Cookie: cookie } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return { status: response.status, body: await response.json() };

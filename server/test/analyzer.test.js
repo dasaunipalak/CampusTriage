@@ -94,11 +94,15 @@ test('deadline aborts stalled fetch and stalled body reading', async () => {
 test('HTTP API saves original complaint on real-adapter timeout and exposes mode safely', async t => {
   const db = openDatabase(':memory:');
   const analyzer = createAnalyzer({ env: { ...env, AI_TIMEOUT_MS: '10' }, fetchImpl: () => new Promise(() => {}) });
-  const server = createApp({ db, analyzer }).listen(0, '127.0.0.1');
+  let sentCode;
+  const server = createApp({ db, analyzer, sessionSecret: 'analyzer-test-secret', emailSender: { async sendOtp(email, code) { sentCode = code; } } }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); });
   const base = `http://127.0.0.1:${server.address().port}`;
-  const response = await fetch(`${base}/complaints`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+  await fetch(`${base}/api/auth/student/request-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'ai@iiitl.ac.in' }) });
+  const login = await fetch(`${base}/api/auth/student/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'ai@iiitl.ac.in', code: sentCode }) });
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  const response = await fetch(`${base}/complaints`, { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie },
     body: JSON.stringify({ description, location: 'Fictional washroom' }) });
   assert.equal(response.status, 201);
   const saved = await response.json();

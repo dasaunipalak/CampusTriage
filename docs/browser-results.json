@@ -3,7 +3,7 @@
   "browser": "158.0.8127.88",
   "checksPassed": 12,
   "checks": [
-    "Student UI submits a routine complaint and shows persisted confirmation.",
+    "Student OTP login then submits a routine complaint; confirmation appears and student id is saved.",
     "Later Hinglish electrical hazard is rank 1, routine ticket rank 2; exact evidence and required review are visible.",
     "Resolve updates SQLite and refreshes the UI queue, removing the resolved hazard.",
     "Queue refresh failure displays an error and identifies stale results.",

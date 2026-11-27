@@ -12,12 +12,12 @@ Implemented scope: two React screens; Express JSON API; SQLite storage; server-s
 
 | Actor | Implemented use cases |
 | --- | --- |
-| Student | Enter description/location, submit, see saved confirmation or error; retain inputs after an unsuccessful request |
+| Student | Request and verify a college-email OTP; submit description/location, see saved confirmation or error, and log out |
 | Admin | Load ranked pending complaints, inspect original text and analysis/evidence/source/review status, read rank reason, resolve a ticket and refresh the queue |
 | Analyzer adapter | Extract category, concise summary, possible safety concern, quoted evidence and review flag; reject/timeout on failure |
 | Developer/presenter | Run explicit mock simulation, seed fictional data, run fixed-clock FIFO comparison and acceptance checks |
 
-Student/admin are screen roles, **not authenticated security roles**. Anyone with access to the local server can invoke both endpoints/screens.
+Student complaint submission requires a signed student session established by a verified `@iiitl.ac.in` email OTP. The admin screen and resolution routes remain unauthenticated and are for local demonstration only.
 
 ## 3. Functional requirements and acceptance mapping
 
@@ -35,6 +35,8 @@ Student/admin are screen roles, **not authenticated security roles**. Anyone wit
 | FR-10 | Identify active analysis mode and persisted source per complaint; never silently use mock as a live fallback | Mode/configuration tests; status endpoint; screenshots with simulation banner |
 | FR-11 | Provide reproducible fixtures and a fixed-time comparison against FIFO, clearly labelled as simulation | `simulate.js`, `simulation-results.json`, browser before/after screenshots |
 | FR-12 | Preserve milestone SQLite records when adding analysis provenance | `api.test.js`: legacy database migration test |
+| FR-13 | Require a verified college-email OTP before submission; enforce expiry, attempt and request limits | `auth.test.js`; browser login-to-submit check |
+| FR-14 | Keep student email out of analyzer input and admin queue responses | `auth.test.js`: analyzer input and queue privacy assertions |
 
 ## 4. Nonfunctional requirements and limits
 
@@ -118,10 +120,11 @@ Valid submission -> analyze -> validate -> persist pending -> 201
 Pending -> resolve -> resolved (excluded from queue)
 Resolved -> resolve -> same resolved state and original resolution time
 Invalid input -> 400/413 without analysis or insertion
+Unauthenticated complaint submission -> 401
 Storage failure -> 500 (no guaranteed saved complaint)
 ```
 
-The UI preserves form values after request failure and displays an actionable error. A timeout may leave uncertainty about whether a request saved; the UI advises checking the admin queue before retrying. Refresh failure leaves the old queue visibly marked as potentially stale. There is no request-id based deduplication or optimistic update that assumes successful resolution.
+OTP codes expire after 10 minutes, are stored as salted hashes, permit at most five attempts, and are limited to five requests per hour with a 60-second resend cooldown. Student sessions use a signed, HttpOnly, SameSite=Lax cookie. The UI preserves form values after request failure and displays an actionable error. A timeout may leave uncertainty about whether a request saved; the UI advises checking the admin queue before retrying. Refresh failure leaves the old queue visibly marked as potentially stale. There is no request-id based deduplication or optimistic update that assumes successful resolution.
 
 ## 10. Evaluation and acceptance results
 
@@ -139,4 +142,4 @@ Requirements traceability ties user behaviours to API/ranking/browser acceptance
 
 Chosen tradeoffs: Express and SQLite keep installation and demonstration small; React separates student/admin views while reusing the JSON API. The LLM handles language variation while deterministic rules make queue policy testable. A rules-only mock remains available for reproducibility; it does not validate the real model.
 
-Future work: authenticate students/admins, authorize resolution, protect public endpoints, evaluate multilingual safety extraction with labelled data, calibrate factors with campus stakeholders, support completed manual reviews and audit history, add request deduplication, backups, notifications and operational monitoring. These are not implemented requirements and must not be presented as completed features.
+Future work: authenticate admins and authorize resolution, protect remaining public endpoints, evaluate multilingual safety extraction with labelled data, calibrate factors with campus stakeholders, support completed manual reviews and audit history, add request deduplication, backups, notifications and operational monitoring. SMTP delivery to a real college inbox remains unverified.

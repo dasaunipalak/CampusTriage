@@ -59,9 +59,35 @@ The adapter calls the [OpenAI Responses API](https://developers.openai.com/api/r
 
 ### Student sign-in and email setup
 
-Student complaint submission requires an OTP login using an `@iiitl.ac.in` address. Copy `server/.env.example` to `server/.env` if you have not already done so. Development and tests default to the **console sender**: request a code in the browser, then read the six-digit code in the server terminal (`[student OTP] address: 123456`). It never sends real email. Tests inject their own in-memory sender.
+Student complaint submission requires an OTP login using an `@iiitl.ac.in` address. Copy `server/.env.example` to `server/.env` if you have not already done so. With `OTP_EMAIL_SENDER=console` (the safe default), request a code in the browser and read it in the server terminal (`[student OTP] address: 123456`). This mode never sends email. Automated tests use an in-memory sender.
 
-The sender can use SMTP only when explicitly enabled with `OTP_EMAIL_SENDER=smtp`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` in the private `server/.env`; never put these in the frontend. `SESSION_SECRET` should be a long random value for a persistent deployment. The example SMTP values are placeholders and are not usable credentials. SMTP delivery to an IIITL inbox has not been tested. Do not switch development or test runs to SMTP.
+To send real messages, change only `OTP_EMAIL_SENDER=console` to `OTP_EMAIL_SENDER=smtp` in `server/.env`, fill in the SMTP values below, and restart the backend. The SMTP sender never prints OTPs. On failure it logs a sanitized SMTP diagnostic and the API returns a generic send error. The email address and OTP go to the SMTP server as needed to deliver the sign-in email; SMTP credentials remain server-side. `SESSION_SECRET` should be a long random value for a persistent deployment.
+
+#### Gmail SMTP
+
+Google requires 2-Step Verification before you can create an App Password. In your Google Account, open **Security & sign-in**, enable **2-Step Verification**, then open **App passwords** and create one for CampusTriage. Use that generated App Password as `SMTP_PASS`, not your normal Google Account password. Google's App Password option may be unavailable for some managed/work accounts, Advanced Protection accounts, or accounts using security-key-only 2-Step Verification; see [Google's App Password help](https://support.google.com/accounts/answer/185833).
+
+```dotenv
+OTP_EMAIL_SENDER=smtp
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-account@gmail.com
+SMTP_PASS=your-16-character-app-password
+MAIL_FROM="CampusTriage <your-account@gmail.com>"
+```
+
+Gmail port **587** uses STARTTLS; port **465** uses SSL/TLS from connection start. Store the App Password only in the ignored `server/.env`. Revoke it in your Google Account when it is no longer needed.
+
+#### Other SMTP providers
+
+Get the SMTP hostname, submission port, username, password/token, and permitted sender address from your provider. Put those values in `server/.env` using the same names: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM`. Port 587 uses STARTTLS and port 465 uses SSL/TLS. The verification tool sends one test message (no OTP) to the one recipient you provide:
+
+```powershell
+Set-Location "C:\dev\CampusTriage\server"
+npm run verify:email -- recipient@example.com
+```
+
+For student login, check the inbox **and spam/junk folder**. `server/.env.example` uses placeholders only. Never put SMTP credentials in the frontend, source code, screenshots, or chat. No real email is sent unless you explicitly select `OTP_EMAIL_SENDER=smtp` and invoke a send action.
 
 Backend terminal:
 

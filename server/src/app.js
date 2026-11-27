@@ -3,19 +3,23 @@ const { createAnalyzer, isValidAnalysis } = require('./analyzer');
 const path = require('node:path');
 const { insertComplaint, toComplaint } = require('./database');
 const { rankComplaints, PROVISIONAL_DEFAULTS } = require('./ranking');
+const { mountStudentAuth } = require('./auth/routes');
+const { createEmailSender } = require('./auth/email-sender');
 
 function createApp({ db, analyzer = createAnalyzer(), now = () => new Date(), demo = false,
+  emailSender = createEmailSender(), sessionSecret = process.env.SESSION_SECRET,
   frontendDir = path.join(__dirname, '../../client/dist') }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
+  const { requireStudent } = mountStudentAuth(app, { db, sender: emailSender, now, sessionSecret });
 
   app.get('/api/status', (req, res) => {
     res.json({ analysis: analyzer.getStatus?.() ?? { mode: analyzer.mode ?? 'injected', ready: true,
       liveVerified: false, missingSettings: [] }, simulation: demo, referenceTime: now().toISOString() });
   });
 
-  app.post('/complaints', async (req, res) => {
+  app.post('/complaints', requireStudent, async (req, res) => {
     const { description, location } = req.body ?? {};
     if (typeof description !== 'string' || !description.trim() || description.length > 5000
       || typeof location !== 'string' || !location.trim() || location.length > 200) {
@@ -38,7 +42,7 @@ function createApp({ db, analyzer = createAnalyzer(), now = () => new Date(), de
     }
     const complaint = insertComplaint(db, { description, location, analysis, analysisStatus,
       analysisMode: analyzer.mode ?? 'injected', createdAt: referenceTime,
-      ...PROVISIONAL_DEFAULTS, scoringSource: 'provisional-defaults' });
+      studentId: req.student.studentId, ...PROVISIONAL_DEFAULTS, scoringSource: 'provisional-defaults' });
     res.status(201).json(rankComplaints([complaint], referenceTime)[0]);
   });
 

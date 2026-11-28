@@ -4,15 +4,14 @@ const path = require('node:path');
 const { insertComplaint, toComplaint } = require('./database');
 const { rankComplaints, PROVISIONAL_DEFAULTS } = require('./ranking');
 const { mountStudentAuth } = require('./auth/routes');
-const { createEmailSender } = require('./auth/email-sender');
 
 function createApp({ db, analyzer = createAnalyzer(), now = () => new Date(), demo = false,
-  emailSender = createEmailSender(), sessionSecret = process.env.SESSION_SECRET,
+  sessionSecret = process.env.SESSION_SECRET,
   frontendDir = path.join(__dirname, '../../client/dist') }) {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '32kb' }));
-  const { requireStudent } = mountStudentAuth(app, { db, sender: emailSender, now, sessionSecret });
+  const { requireStudent } = mountStudentAuth(app, { db, now, sessionSecret });
 
   app.get('/api/status', (req, res) => {
     res.json({ analysis: analyzer.getStatus?.() ?? { mode: analyzer.mode ?? 'injected', ready: true,

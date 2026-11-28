@@ -59,9 +59,7 @@ The adapter calls the [OpenAI Responses API](https://developers.openai.com/api/r
 
 ### Student sign-in and email setup
 
-Student complaint submission requires an OTP login using an `@iiitl.ac.in` address. Copy `server/.env.example` to `server/.env` if you have not already done so. Development and tests default to the **console sender**: request a code in the browser, then read the six-digit code in the server terminal (`[student OTP] address: 123456`). It never sends real email. Tests inject their own in-memory sender.
-
-The sender can use SMTP only when explicitly enabled with `OTP_EMAIL_SENDER=smtp`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `MAIL_FROM` in the private `server/.env`; never put these in the frontend. `SESSION_SECRET` should be a long random value for a persistent deployment. The example SMTP values are placeholders and are not usable credentials. SMTP delivery to an IIITL inbox has not been tested. Do not switch development or test runs to SMTP.
+Student complaint submission requires a college email ending in `@iiitl.ac.in`. Login is by email entry only: this version does not verify ownership or send email. Anyone who knows a student's college email can sign in as that student. The login endpoint is rate-limited to 10 attempts per IP per minute. `SESSION_SECRET` should be a long random value for a persistent deployment.
 
 Backend terminal:
 
@@ -89,7 +87,7 @@ npm run verify:pptx     # reopen/render the actual PPTX and verify five slides/r
 
 Browser verification uses installed Google Chrome on macOS by default. On another machine set `CHROME_PATH` to a Chrome/Chromium executable, for example `CHROME_PATH=/usr/bin/google-chrome npm run verify:ui`. It uses only temporary in-memory databases and stubbed/mock analysis, never your live database or key. It checks actual student/admin interactions, hazard precedence, exact boundary promotion, resolution, empty/error states, mobile overflow and provider-timeout fallback. It writes `docs/browser-results.json` and `docs/screenshots/`. `npm run slides` requires those screenshots and the same browser executable. PowerPoint export/verification commands additionally require macOS, Python 3 and installed Keynote. They use temporary asset copies outside Desktop and preserve editable slide text and a native comparison table. Rebuilding HTML/PDF does not automatically overwrite the PPTX; run `npm run pptx` after source changes.
 
-Rerun in the final submission pass on 24 November: **24 backend tests passed, 0 failures**; production React build passed; **12 browser checks passed**. Original baseline: 13/13 tests passed before changes. Evidence is in `docs/backend-test-results.txt`, `docs/browser-results.json`, `docs/simulation-results.json`, and the screenshots. None of this establishes live AI accuracy or real campus response-time improvement.
+After switching to email-entry-only student login: **29 backend tests passed, 0 failures**; the production React build passed; **13 browser checks passed**, including logout and a rejected post-logout complaint. The browser run uses mock analysis and in-memory test databases. Evidence is in `docs/browser-results.json`, `docs/simulation-results.json`, and the screenshots. None of this establishes live AI accuracy or real campus response-time improvement.
 
 ## Rehearse the demo
 
@@ -113,18 +111,14 @@ FIFO ignores possible safety concern. Our ranking moves #3 to position 1 and pro
 
 ## API contract
 
-Student auth endpoints are under `/api/auth/student`: `POST /request-otp` accepts `{ "email": "name@iiitl.ac.in" }`, `POST /verify-otp` accepts `{ "email": "...", "code": "123456" }`, `GET /me` returns the current session or **401**, and `POST /logout` clears the session cookie. The signed session cookie is `HttpOnly` and `SameSite=Lax`. `POST /complaints` also requires that student session; queue reads retain the existing response shape.
+Student auth endpoints are under `/api/auth/student`: `POST /login` accepts `{ "email": "name@iiitl.ac.in" }`, `GET /me` returns the current session or **401**, and `POST /logout` clears the session cookie. The signed session cookie is `HttpOnly` and `SameSite=Lax`. Email entry does not verify ownership, so anyone who knows a student's address can sign in as that student. `POST /complaints` requires that student session; queue reads retain the existing response shape.
 
 `POST /complaints` accepts JSON `{ "description": "...", "location": "..." }`. Both must be nonblank strings; maximum lengths are 5000 and 200. Original text is preserved. The API ignores supplied status, timestamps, AI fields and factor values. A saved complaint returns **201**, including failed analysis. Validation errors return **400**, oversized bodies **413**.
 
 ```sh
-curl -i -X POST http://localhost:3001/api/auth/student/request-otp \
+curl -i -c cookies.txt -X POST http://localhost:3001/api/auth/student/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"student@iiitl.ac.in"}'
-# Read the code from the server terminal, then:
-curl -i -c cookies.txt -X POST http://localhost:3001/api/auth/student/verify-otp \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"student@iiitl.ac.in","code":"123456"}'
 curl -i -b cookies.txt -X POST http://localhost:3001/complaints \
   -H 'Content-Type: application/json' \
   -d '{"description":"socket mein paani ja raha hai","location":"Fictional hostel"}'
@@ -223,4 +217,4 @@ New submissions use **provisional severity=5, urgency=5, impact=5**, since the a
 - `docs/VERIFICATION.md`: actual results and remaining limits.
 - `docs/screenshots/`, `docs/browser-results.json`, `docs/simulation-results.json`: recorded fictional demo evidence.
 
-This local prototype has student OTP authentication and request limits, but no admin authorization, notifications, model accuracy study, deployment, backup workflow, multi-campus isolation or review-completion workflow. The server binds to loopback for the classroom demo. It is not ready for public use. The deadline applies to AI fetching and response parsing; database/filesystem failures still return an error and cannot promise persistence. Live OpenAI verification and real SMTP inbox delivery remain unverified external configuration tasks.
+This local prototype has email-entry student sessions and a login rate limit, but it does not verify email ownership: anyone who knows a student's college email can sign in as them. It has no admin authorization, notifications, model accuracy study, deployment, backup workflow, multi-campus isolation or review-completion workflow. The server binds to loopback for the classroom demo. It is not ready for public use. The deadline applies to AI fetching and response parsing; database/filesystem failures still return an error and cannot promise persistence. Live OpenAI verification remains unverified.

@@ -1,15 +1,16 @@
 {
   "label": "SIMULATION: fictional data; mock AI and a stubbed provider timeout; no live OpenAI request",
   "browser": "158.0.8127.88",
-  "checksPassed": 12,
+  "checksPassed": 13,
   "checks": [
-    "Student OTP login then submits a routine complaint; confirmation appears and student id is saved.",
+    "College-email entry signs in and submits a routine complaint; confirmation appears and student id is saved.",
     "Later Hinglish electrical hazard is rank 1, routine ticket rank 2; exact evidence and required review are visible.",
     "Resolve updates SQLite and refreshes the UI queue, removing the resolved hazard.",
     "Queue refresh failure displays an error and identifies stale results.",
     "Empty queue state appears after all complaints are resolved.",
     "Failed student submission shows an error and retains the form for retry.",
     "Student screen fits a 390px mobile viewport without horizontal overflow.",
+    "Logout returns to email entry and blocks later complaint submission with HTTP 401.",
     "Exact boundary: routine #1 moves from rank 3 at 47h59m59.999s to rank 2 at 48h; hazard stays rank 1.",
     "Same-ticket simulation records FIFO [1,2,3], ranked before [3,2,1], ranked at 48h [3,1,2].",
     "Admin queue fits a 390px mobile viewport without horizontal overflow.",

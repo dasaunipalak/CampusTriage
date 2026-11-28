@@ -60,26 +60,17 @@ function App() {
 }
 
 function StudentLogin({ onLogin }) {
-  const [email, setEmail] = useState(''); const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false); const [cooldown, setCooldown] = useState(0);
+  const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
-  useEffect(() => { if (!cooldown) return; const timer = setTimeout(() => setCooldown(value => Math.max(0, value - 1)), 1000); return () => clearTimeout(timer); }, [cooldown]);
-  async function requestCode(event) {
+  async function login(event) {
     event.preventDefault(); setBusy(true); setError('');
-    try { await api('/api/auth/student/request-otp', { method: 'POST', body: JSON.stringify({ email }) }); setSent(true); setCooldown(60); setCode(''); }
-    catch (e) { setError(e.message); const wait = e.message.match(/wait (\d+) seconds/); if (wait) setCooldown(Number(wait[1])); }
-    finally { setBusy(false); }
-  }
-  async function verify(event) {
-    event.preventDefault(); setBusy(true); setError('');
-    try { onLogin((await api('/api/auth/student/verify-otp', { method: 'POST', body: JSON.stringify({ email, code }) })).student); }
+    try { onLogin((await api('/api/auth/student/login', { method: 'POST', body: JSON.stringify({ email }) })).student); }
     catch (e) { setError(e.message); }
     finally { setBusy(false); }
   }
-  return <div className="student-layout"><section className="intro"><p className="eyebrow">A CAMPUS THAT LISTENS</p><h1>Small report.<br/>Better campus.</h1><p className="lead">Sign in with your IIITL college email to report a maintenance issue.</p><div className="process"><span>01 <b>Verify your college email</b></span><span>02 <b>Describe the issue</b></span><span>03 <b>The campus team reviews it</b></span></div><aside className="note"><strong>Your email stays private.</strong><p>It is used for sign-in and is not included with your report.</p></aside></section>
-    <section className="form-card" aria-labelledby="login-title"><span className="small-tag">STUDENT DESK</span><h2 id="login-title">Student sign in</h2><p>We’ll send a one-time code to your college email.</p>{error && <p className="error" role="alert">{error}</p>}
-      <form onSubmit={requestCode}><label htmlFor="student-email">College email</label><input id="student-email" type="email" required value={email} disabled={busy || sent} onChange={e => setEmail(e.target.value)} placeholder="name@iiitl.ac.in"/><button className="primary submit" disabled={busy || cooldown > 0}>{busy ? 'Sending code…' : cooldown ? `Resend in ${cooldown}s` : sent ? 'Resend code' : 'Send code'}</button></form>
-      {sent && <form onSubmit={verify}><label htmlFor="otp-code">One-time code</label><input id="otp-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} disabled={busy} onChange={e => setCode(e.target.value)}/><button className="primary submit" disabled={busy || code.length !== 6}>{busy ? 'Verifying…' : 'Verify'}</button></form>}
+  return <div className="student-layout"><section className="intro"><p className="eyebrow">A CAMPUS THAT LISTENS</p><h1>Small report.<br/>Better campus.</h1><p className="lead">Sign in with your IIITL college email to report a maintenance issue.</p><div className="process"><span>01 <b>Enter your college email</b></span><span>02 <b>Describe the issue</b></span><span>03 <b>The campus team reviews it</b></span></div><aside className="note"><strong>College email sign-in.</strong><p>This version does not verify that you own the email address.</p></aside></section>
+    <section className="form-card" aria-labelledby="login-title"><span className="small-tag">STUDENT DESK</span><h2 id="login-title">Student sign in</h2><p>Enter your IIITL college email to continue.</p>{error && <p className="error" role="alert">{error}</p>}
+      <form onSubmit={login}><label htmlFor="student-email">College email</label><input id="student-email" type="email" required value={email} disabled={busy} onChange={e => setEmail(e.target.value)} placeholder="name@iiitl.ac.in"/><button className="primary submit" disabled={busy || !email.trim()}>{busy ? 'Signing in…' : 'Continue'}</button></form>
     </section></div>;
 }
 

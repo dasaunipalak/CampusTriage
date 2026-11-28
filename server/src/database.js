@@ -24,6 +24,13 @@ function openDatabase(filename = DEFAULT_DB_PATH) {
       scoring_source TEXT NOT NULL
     );
   `);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS students (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
+  `);
   // Existing milestone databases contain mock analysis. Preserve it and its provenance.
   if (!db.prepare('PRAGMA table_info(complaints)').all().some(column => column.name === 'analysis_mode')) {
     db.exec("ALTER TABLE complaints ADD COLUMN analysis_mode TEXT NOT NULL DEFAULT 'legacy-mock'");
@@ -31,24 +38,8 @@ function openDatabase(filename = DEFAULT_DB_PATH) {
   if (!db.prepare('PRAGMA table_info(complaints)').all().some(column => column.name === 'student_id')) {
     db.exec('ALTER TABLE complaints ADD COLUMN student_id INTEGER REFERENCES students(id)');
   }
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS students (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL UNIQUE,
-      created_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS otp_codes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT NOT NULL,
-      code_hash TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      attempts INTEGER NOT NULL DEFAULT 0,
-      consumed INTEGER NOT NULL DEFAULT 0 CHECK (consumed IN (0, 1)),
-      created_at TEXT NOT NULL,
-      last_sent_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS otp_codes_email_created ON otp_codes(email, created_at);
-  `);
+  // Remove OTP records left by the previous login flow; they are no longer used.
+  db.exec('DROP TABLE IF EXISTS otp_codes');
   return db;
 }
 

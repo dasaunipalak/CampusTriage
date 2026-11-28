@@ -19,12 +19,10 @@ async function main() {
   let browser;
   async function serve(options) {
     const db = openDatabase(':memory:');
-    const codes = [];
-    const emailSender = { async sendOtp(email, code) { codes.push({ email, code }); } };
-    const server = createApp({ db, demo: true, emailSender, sessionSecret: 'browser-test-secret', ...options }).listen(0, '127.0.0.1');
+    const server = createApp({ db, demo: true, sessionSecret: 'browser-test-secret', ...options }).listen(0, '127.0.0.1');
     await once(server, 'listening');
     servers.push({ server, db });
-    return { db, codes, url: `http://127.0.0.1:${server.address().port}` };
+    return { db, url: `http://127.0.0.1:${server.address().port}` };
   }
   const record = message => { checks.push(message); console.log(`PASS: ${message}`); };
   async function submit(page, description, location) {
@@ -34,12 +32,9 @@ async function main() {
     await page.getByRole('button', { name: 'Submit complaint', exact: true }).click();
     await page.getByText(/Complaint #\d+ received/).waitFor();
   }
-  async function signIn(page, app, email = 'browser@iiitl.ac.in') {
+  async function signIn(page, email = 'browser@iiitl.ac.in') {
     await page.getByLabel('College email').fill(email);
-    await page.getByRole('button', { name: 'Send code', exact: true }).click();
-    await page.getByLabel('One-time code').waitFor();
-    await page.getByLabel('One-time code').fill(app.codes.at(-1).code);
-    await page.getByRole('button', { name: 'Verify', exact: true }).click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.getByLabel('Describe the issue').waitFor();
   }
   const ids = page => page.locator('.ticket').evaluateAll(nodes => nodes.map(n => Number(n.dataset.testid.replace('ticket-', ''))));
@@ -56,14 +51,14 @@ async function main() {
     const app = await serve({ analyzer: createAnalyzer({ env: { ANALYZER_MODE: 'mock' } }), now: () => clock });
     await page.goto(app.url);
     await page.getByText('Mock demo · deterministic simulation', { exact: true }).waitFor();
-    await signIn(page, app);
+    await signIn(page);
     await page.getByLabel('Describe the issue').fill('The classroom projector is not working.');
     await page.getByLabel('Where is it?').fill('Fictional Block A, Room 102');
     await page.screenshot({ path: path.join(shots, 'student.png'), fullPage: true });
     await page.getByRole('button', { name: 'Submit complaint', exact: true }).click();
     await page.getByText('Complaint #1 received', { exact: true }).waitFor();
     assert.equal(app.db.prepare('SELECT student_id FROM complaints').get().student_id > 0, true);
-    record('Student OTP login then submits a routine complaint; confirmation appears and student id is saved.');
+    record('College-email entry signs in and submits a routine complaint; confirmation appears and student id is saved.');
     clock = new Date(Date.parse(AFTER) + 1000);
     await submit(page, 'washroom ke socket mein paani ja raha hai', 'Fictional hostel washroom');
     await page.getByRole('link', { name: 'Admin queue', exact: true }).click();
@@ -102,6 +97,15 @@ async function main() {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     record('Student screen fits a 390px mobile viewport without horizontal overflow.');
     await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole('button', { name: 'Logout', exact: true }).click();
+    await page.getByRole('heading', { name: 'Student sign in', exact: true }).waitFor();
+    const afterLogout = await page.evaluate(async () => {
+      const response = await fetch('/complaints', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'Post logout request', location: 'Fictional test building' }) });
+      return response.status;
+    });
+    assert.equal(afterLogout, 401);
+    record('Logout returns to email entry and blocks later complaint submission with HTTP 401.');
 
     // Controlled clock is injected only into this local test server; no public clock-change endpoint.
     clock = new Date(BEFORE);
@@ -129,7 +133,7 @@ async function main() {
       fetchImpl: () => new Promise(() => {}) });
     const failApp = await serve({ analyzer: failing, now: () => new Date(AFTER) });
     await page.goto(failApp.url);
-    await signIn(page, failApp, 'timeout@iiitl.ac.in');
+    await signIn(page, 'timeout@iiitl.ac.in');
     await submit(page, 'Water is entering a socket in the fictional washroom.', 'Fictional hostel');
     await page.getByText('AI analysis was unavailable. Your original complaint is saved.', { exact: true }).waitFor();
     await page.getByRole('link', { name: 'Admin queue', exact: true }).click();

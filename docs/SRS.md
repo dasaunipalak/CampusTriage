@@ -6,18 +6,18 @@ Version 1.0 · 24 November 2026 · Solo Software Engineering submission, 25 Nove
 
 CampusTriage captures campus maintenance reports in students' own words and presents an explainable pending queue to an admin. The core problem is that arrival order alone does not identify a later report describing a possible safety concern. The prototype combines structured AI extraction with deterministic prioritisation and human review. It does not establish an actual hazard or promise an emergency response.
 
-Implemented scope: two React screens; Express JSON API; SQLite storage; server-side OpenAI adapter; explicit mock demo; complaint resolution; deterministic ranking; error and manual-review behaviour; local verification and fictional simulations. Live OpenAI usage is not yet verified because credentials and model are missing. There is no claim of measured reduction in response time or improved real-world accuracy.
+Implemented scope: two React screens; Express JSON API; SQLite storage; server-side OpenAI adapter; explicit mock demo; email-entry student sessions; complaint resolution; deterministic ranking; error and manual-review behaviour; local verification and fictional simulations. Live OpenAI usage is not yet verified because credentials and model are missing. There is no claim of measured reduction in response time or improved real-world accuracy.
 
 ## 2. Actors and use cases
 
 | Actor | Implemented use cases |
 | --- | --- |
-| Student | Request and verify a college-email OTP; submit description/location, see saved confirmation or error, and log out |
+| Student | Enter a college email to sign in; submit description/location, see saved confirmation or error, and log out |
 | Admin | Load ranked pending complaints, inspect original text and analysis/evidence/source/review status, read rank reason, resolve a ticket and refresh the queue |
 | Analyzer adapter | Extract category, concise summary, possible safety concern, quoted evidence and review flag; reject/timeout on failure |
 | Developer/presenter | Run explicit mock simulation, seed fictional data, run fixed-clock FIFO comparison and acceptance checks |
 
-Student complaint submission requires a signed student session established by a verified `@iiitl.ac.in` email OTP. The admin screen and resolution routes remain unauthenticated and are for local demonstration only.
+Student complaint submission requires a signed session established by entering a valid `@iiitl.ac.in` address. This version does not verify email ownership and sends no email; anyone who knows a student's college email can sign in as them. Login attempts are limited to 10 per IP per minute. The admin screen and resolution routes remain unauthenticated and are for local demonstration only.
 
 ## 3. Functional requirements and acceptance mapping
 
@@ -35,8 +35,9 @@ Student complaint submission requires a signed student session established by a 
 | FR-10 | Identify active analysis mode and persisted source per complaint; never silently use mock as a live fallback | Mode/configuration tests; status endpoint; screenshots with simulation banner |
 | FR-11 | Provide reproducible fixtures and a fixed-time comparison against FIFO, clearly labelled as simulation | `simulate.js`, `simulation-results.json`, browser before/after screenshots |
 | FR-12 | Preserve milestone SQLite records when adding analysis provenance | `api.test.js`: legacy database migration test |
-| FR-13 | Require a verified college-email OTP before submission; enforce expiry, attempt and request limits | `auth.test.js`; browser login-to-submit check |
+| FR-13 | Accept valid college-email entry, normalize it, start a student session, and limit login attempts | `auth.test.js`; browser login-to-submit check |
 | FR-14 | Keep student email out of analyzer input and admin queue responses | `auth.test.js`: analyzer input and queue privacy assertions |
+| FR-15 | Preserve existing student sessions and complaint student IDs while removing obsolete OTP storage | `api.test.js` and `auth.test.js`: migration coverage |
 
 ## 4. Nonfunctional requirements and limits
 
@@ -124,11 +125,11 @@ Unauthenticated complaint submission -> 401
 Storage failure -> 500 (no guaranteed saved complaint)
 ```
 
-OTP codes expire after 10 minutes, are stored as salted hashes, permit at most five attempts, and are limited to five requests per hour with a 60-second resend cooldown. Student sessions use a signed, HttpOnly, SameSite=Lax cookie. The UI preserves form values after request failure and displays an actionable error. A timeout may leave uncertainty about whether a request saved; the UI advises checking the admin queue before retrying. Refresh failure leaves the old queue visibly marked as potentially stale. There is no request-id based deduplication or optimistic update that assumes successful resolution.
+The login endpoint limits each IP to 10 attempts per minute. Student sessions use a signed, HttpOnly, SameSite=Lax cookie. Email entry is not proof of identity or ownership; impersonation is possible when someone knows another student's address. The UI preserves form values after request failure and displays an actionable error. A timeout may leave uncertainty about whether a request saved; the UI advises checking the admin queue before retrying. Refresh failure leaves the old queue visibly marked as potentially stale. There is no request-id based deduplication or optimistic update that assumes successful resolution.
 
 ## 10. Evaluation and acceptance results
 
-Baseline confirmed: 13/13 backend tests before changes. Final suite: **24 passed, 0 failed**. Production React build passed. Real Chrome exercised the built frontend with local APIs and SQLite in **12 passing browser checks**, including timeout fallback. Evidence: `backend-test-results.txt`, `browser-results.json` and `screenshots/` in this directory. Automated adapter tests use stubs, not real model calls.
+Baseline confirmed: 13/13 backend tests before the earlier milestone changes. After switching to email-entry-only student login, **29 backend tests passed, 0 failed**; the production React build passed; and real Chrome exercised the built frontend with local APIs and SQLite in **13 passing browser checks**, including logout and rejection of a post-logout complaint. Browser verification uses mock analysis and in-memory test databases. Evidence: `backend-test-results.txt`, `browser-results.json` and `screenshots/` in this directory. Automated adapter tests use stubs, not real model calls.
 
 Fictional fixed-clock simulation uses the same three pending reports under each policy. FIFO stays `[1,2,3]`; just before the oldest routine report reaches 48 hours, ranking is `[3,2,1]`; at exactly 48 hours, ranking is `[3,1,2]`. The hazard remains first and the older routine report moves from position 3 to 2. Factors, timestamps and evidence are recorded in `simulation-results.json`. This is a policy demonstration, not a field study or an AI benchmark.
 
@@ -142,4 +143,4 @@ Requirements traceability ties user behaviours to API/ranking/browser acceptance
 
 Chosen tradeoffs: Express and SQLite keep installation and demonstration small; React separates student/admin views while reusing the JSON API. The LLM handles language variation while deterministic rules make queue policy testable. A rules-only mock remains available for reproducibility; it does not validate the real model.
 
-Future work: authenticate admins and authorize resolution, protect remaining public endpoints, evaluate multilingual safety extraction with labelled data, calibrate factors with campus stakeholders, support completed manual reviews and audit history, add request deduplication, backups, notifications and operational monitoring. SMTP delivery to a real college inbox remains unverified.
+Future work: verify student email ownership before treating the address as identity; authenticate admins and authorize resolution; protect remaining public endpoints; evaluate multilingual safety extraction with labelled data; calibrate factors with campus stakeholders; support completed manual reviews and audit history; add request deduplication, backups, notifications and operational monitoring.

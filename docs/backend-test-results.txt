@@ -6,35 +6,46 @@
 > campus-triage-server@1.0.0 test
 > node --test
 
-✔ real adapter requests strict structured output and verifies only after valid success (2.145667ms)
-✔ missing key/model never invokes provider or silently uses mock (0.384ms)
-✔ mock mode is explicit and does not claim live verification (0.28ms)
-✔ evidence must be an exact contiguous quote even without a safety flag (0.090541ms)
-✔ adapter rejects HTTP errors, malformed JSON, refusals, incomplete and ungrounded results (0.533417ms)
-✔ deadline aborts stalled fetch and stalled body reading (22.710167ms)
-✔ HTTP API saves original complaint on real-adapter timeout and exposes mode safely (66.738875ms)
-✔ POST preserves originals, persists UTC time, pending status, successful safe analysis and defaults (64.153875ms)
-✔ POST validates both fields and never invokes analyzer for invalid input (15.733625ms)
-✔ thrown analysis saves original complaint with unknown risk and manual review (3.484375ms)
-✔ invalid analyzer output is distinguishable from successful no-risk analysis (7.9085ms)
-✔ hazard requires admin review even if analyzer needsReview is false (3.099666ms)
-✔ demo fixture ranks hazard, overdue and routine; seed refuses existing data (4.312ms)
-✔ resolve persists status, removes complaint from pending queue and is idempotent (6.449625ms)
-✔ SQLite persists original and analysis across database reopen (3.289708ms)
-✔ invalid JSON and oversized bodies return JSON errors without saving (4.098458ms)
-✔ ungrounded evidence triggers manual review even for injected analyzers (3.577875ms)
-✔ migration preserves old database records and labels historical analysis as legacy mock (3.289042ms)
-✔ safety hazards precede overdue and high-scoring routine complaints (2.573833ms)
-✔ 48-hour threshold is inclusive; overdue uses oldest first regardless of score (0.175916ms)
-✔ exact weighted formula and descending score order (0.169792ms)
-✔ equal scores use oldest first, then ID for identical timestamps (0.12775ms)
-✔ waiting clamps to 0–10; ranking is pure and validates explicit factor inputs (0.438041ms)
-✔ fictional FIFO comparison and exact 48-hour promotion are reproducible (2.572167ms)
-ℹ tests 24
+(node:7212) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ real adapter requests strict structured output and verifies only after valid success (2.4951ms)
+✔ missing key/model never invokes provider or silently uses mock (0.7062ms)
+✔ mock mode is explicit and does not claim live verification (0.4178ms)
+✔ evidence must be an exact contiguous quote even without a safety flag (0.1818ms)
+✔ adapter rejects HTTP errors, malformed JSON, refusals, incomplete and ungrounded results (1.1493ms)
+✔ deadline aborts stalled fetch and stalled body reading (29.9576ms)
+✔ HTTP API saves original complaint on real-adapter timeout and exposes mode safely (141.1727ms)
+(node:40784) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ POST preserves originals, persists UTC time, pending status, successful safe analysis and defaults (153.6528ms)
+✔ POST validates both fields and never invokes analyzer for invalid input (55.5173ms)
+✔ thrown analysis saves original complaint with unknown risk and manual review (9.4399ms)
+✔ invalid analyzer output is distinguishable from successful no-risk analysis (17.5206ms)
+✔ hazard requires admin review even if analyzer needsReview is false (7.5386ms)
+✔ demo fixture ranks hazard, overdue and routine; seed refuses existing data (13.262ms)
+✔ resolve persists status, removes complaint from pending queue and is idempotent (16.8471ms)
+✔ SQLite persists original and analysis across database reopen (12.5416ms)
+✔ invalid JSON and oversized bodies return JSON errors without saving (8.3696ms)
+✔ ungrounded evidence triggers manual review even for injected analyzers (7.7192ms)
+✔ migration preserves old database records and labels historical analysis as legacy mock (21.174ms)
+(node:37228) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ student login trims and lowercases email, creates a student, and starts the shared session (153.173ms)
+✔ student login rejects malformed email and non-college domains (59.7833ms)
+✔ student login is limited to ten attempts per IP per minute (17.458ms)
+✔ complaints require a session and keep student email out of analyzer and queue (13.4694ms)
+✔ migration preserves existing database data and removes obsolete OTP storage (22.0116ms)
+✔ safety hazards precede overdue and high-scoring routine complaints (4.1992ms)
+✔ 48-hour threshold is inclusive; overdue uses oldest first regardless of score (0.2784ms)
+✔ exact weighted formula and descending score order (0.2729ms)
+✔ equal scores use oldest first, then ID for identical timestamps (0.5472ms)
+✔ waiting clamps to 0–10; ranking is pure and validates explicit factor inputs (3.4064ms)
+✔ fictional FIFO comparison and exact 48-hour promotion are reproducible (1.55ms)
+ℹ tests 29
 ℹ suites 0
-ℹ pass 24
+ℹ pass 29
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 318.65975
+ℹ duration_ms 706.8638
